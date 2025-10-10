@@ -1,0 +1,25 @@
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.env
+*.egg-info/
+
+# data & outputs
+data/raw/
+data/external/
+outputs/
+wandb/
+lightning_logs/
+*.h5
+*.hdf5
+*.nc
+*.zarr
+*.zip
+
+# notebooks
+.ipynb_checkpoints/
+
+# OS
+.DS_Store

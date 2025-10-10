@@ -1,0 +1,36 @@
+
+seed: 1337
+device: "cuda"  # or "cpu"
+precision: "float32"
+
+data:
+  root: "data/raw"       # path with HDF5 files
+  catalog_csv: "data/catalogs/sevir_catalog.csv"
+  task: "nowcast"        # ["nowcast", "synthetic_radar"]
+  tiny: false
+  tiny_num_events: 8
+  num_workers: 4
+  batch_size: 2
+  input_steps: 13
+  output_steps: 12
+  vil_patch_km: 384
+
+model:
+  name: "unet2d"
+  in_channels: 13       # nowcast: 13 time slices stacked; synthetic: 3 (ir069, ir107, lght)
+  out_channels: 12      # nowcast future steps; synthetic: 1
+  base_channels: 32
+  use_bn: true
+
+optim:
+  lr: 1e-3
+  weight_decay: 0.0
+  betas: [0.9, 0.999]
+
+train:
+  max_steps: 10000
+  val_every: 500
+  ckpt_dir: "outputs/checkpoints"
+  log_dir: "outputs/logs"
+  amp: true
+  grad_clip: 1.0

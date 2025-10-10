@@ -1,0 +1,15 @@
+
+torch>=2.2
+torchvision>=0.17
+numpy>=1.24
+scipy>=1.11
+h5py>=3.10
+tqdm>=4.66
+matplotlib>=3.8
+scikit-image>=0.22
+einops>=0.7
+opencv-python>=4.9
+lpips>=0.1.4
+pyyaml>=6.0
+pytest>=7.4
+ruff>=0.5.0
