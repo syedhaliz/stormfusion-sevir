@@ -54,15 +54,47 @@ def evaluate(model, loader, device):
 def build_loaders(cfg):
     tiny = cfg['data'].get('tiny', False)
     root = cfg['data']['root']
+    catalog_path = cfg['data']['catalog_path']
+
     if tiny:
-        train_index = build_tiny_index(root, "data/samples/tiny_train_ids.txt")
-        val_index   = build_tiny_index(root, "data/samples/tiny_val_ids.txt")
+        train_index = build_tiny_index(
+            catalog_path=catalog_path,
+            ids_txt="data/samples/tiny_train_ids.txt",
+            sevir_root=root,
+            modality=cfg['data'].get('modality', 'vil')
+        )
+        val_index = build_tiny_index(
+            catalog_path=catalog_path,
+            ids_txt="data/samples/tiny_val_ids.txt",
+            sevir_root=root,
+            modality=cfg['data'].get('modality', 'vil')
+        )
     else:
         # TODO: parse real catalog
-        train_index = build_tiny_index(root, "data/samples/tiny_train_ids.txt")
-        val_index   = build_tiny_index(root, "data/samples/tiny_val_ids.txt")
-    ds_tr = SevirNowcastDataset(train_index)
-    ds_va = SevirNowcastDataset(val_index)
+        train_index = build_tiny_index(
+            catalog_path=catalog_path,
+            ids_txt="data/samples/tiny_train_ids.txt",
+            sevir_root=root,
+            modality=cfg['data'].get('modality', 'vil')
+        )
+        val_index = build_tiny_index(
+            catalog_path=catalog_path,
+            ids_txt="data/samples/tiny_val_ids.txt",
+            sevir_root=root,
+            modality=cfg['data'].get('modality', 'vil')
+        )
+
+    ds_tr = SevirNowcastDataset(
+        train_index,
+        input_steps=cfg['data'].get('input_steps', 12),
+        output_steps=cfg['data'].get('output_steps', 1)
+    )
+    ds_va = SevirNowcastDataset(
+        val_index,
+        input_steps=cfg['data'].get('input_steps', 12),
+        output_steps=cfg['data'].get('output_steps', 1)
+    )
+
     dl_tr = DataLoader(ds_tr, batch_size=cfg['data']['batch_size'], shuffle=True, num_workers=cfg['data']['num_workers'])
     dl_va = DataLoader(ds_va, batch_size=cfg['data']['batch_size'], shuffle=False, num_workers=cfg['data']['num_workers'])
     return dl_tr, dl_va

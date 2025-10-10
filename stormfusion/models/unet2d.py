@@ -31,7 +31,17 @@ class Up(nn.Module):
         return self.block(x)
 
 class UNet2D(nn.Module):
-    def __init__(self, in_channels=13, out_channels=12, base_ch=32, use_bn=True):
+    def __init__(self, in_channels=12, out_channels=1, base_ch=32, use_bn=True):
+        """
+        2D U-Net for nowcasting.
+
+        For nowcasting task:
+        - Input: (B, T_in, H, W) - e.g., (B, 12, 384, 384)
+        - Output: (B, T_out, H, W) - e.g., (B, 1, 384, 384)
+
+        in_channels: number of input timesteps (default: 12)
+        out_channels: number of output timesteps (default: 1)
+        """
         super().__init__()
         self.inc = conv_block(in_channels, base_ch, use_bn)
         self.d1 = Down(base_ch, base_ch*2, use_bn)
@@ -45,6 +55,7 @@ class UNet2D(nn.Module):
         self.outc = nn.Conv2d(base_ch, out_channels, kernel_size=1)
 
     def forward(self, x):
+        # x: (B, T_in, H, W) - treat temporal frames as channels
         c1 = self.inc(x)            # base
         c2 = self.d1(c1)            # 2x
         c3 = self.d2(c2)            # 4x
@@ -54,4 +65,4 @@ class UNet2D(nn.Module):
         x = self.u2(x, c3)
         x = self.u1(x, c2)
         x = self.u0(x, c1)
-        return self.outc(x)
+        return self.outc(x)  # (B, T_out, H, W)
