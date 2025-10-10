@@ -7,8 +7,10 @@
 ## Step 1: Upload to Colab (2 min)
 
 1. Go to [Google Colab](https://colab.research.google.com/)
-2. Upload notebook: `notebooks/colab/Stage04_FINAL_Lambda_Sweep.ipynb`
+2. Upload notebook: `notebooks/colab/Stage04_READY_TO_RUN.ipynb` ⭐ **USE THIS ONE**
 3. **OR** open from Drive if you uploaded it there
+
+**Note:** This notebook has ALL code inline - no file uploads needed!
 
 ---
 
@@ -20,36 +22,19 @@
 
 ---
 
-## Step 3: Upload Required Files (5 min)
+## Step 3: ~~Upload Required Files~~ SKIP THIS! ✅
 
-**Option A: Upload entire project to Drive (Recommended)**
+**The new notebook has ALL code built-in!**
 
-```bash
-# On your local machine, zip the project
-cd /Users/haider/Downloads
-zip -r stormfusion-sevir.zip stormfusion-sevir \
-  -x "*.git*" "*.venv*" "*__pycache__*" "*.h5"
+No file uploads needed. Everything is in the notebook:
+- ✅ Dataset code
+- ✅ Model architecture
+- ✅ Perceptual loss
+- ✅ Training loop
+- ✅ Evaluation metrics
 
-# Upload to Google Drive: /MyDrive/stormfusion-sevir.zip
-# Then in Colab, unzip:
-```
-
-In Colab:
-```python
-from google.colab import drive
-drive.mount('/content/drive')
-
-!cd /content && unzip -q /content/drive/MyDrive/stormfusion-sevir.zip
-!cd stormfusion-sevir && ls
-```
-
-**Option B: Upload files manually (if Option A doesn't work)**
-
-Upload these files using Colab's file upload:
-1. All of `stormfusion/` directory
-2. `scripts/train_unet_with_perceptual.py`
-3. `data/samples/tiny_train_ids.txt`
-4. `data/samples/tiny_val_ids.txt`
+Just make sure your SEVIR data is in Drive at:
+`/content/drive/MyDrive/SEVIR_Data/`
 
 ---
 
