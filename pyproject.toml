@@ -7,7 +7,18 @@ authors = [{name="StormFusion Team"}]
 requires-python = ">=3.9"
 dependencies = []
 
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["stormfusion"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py39"
 select = ["E", "F", "I"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
