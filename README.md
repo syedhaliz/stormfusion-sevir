@@ -49,10 +49,52 @@ aligned on 384 km patches at sensor-native resolutions. This scaffold reuses tho
 
 Refs: Veillette et al., *NeurIPS 2020 Datasets and Benchmarks* (SEVIR).
 
+## Progress Tracker
+
+### Stage 0: Environment Setup ✅
+- PyTorch environment configured
+- SEVIR data pipeline validated
+- Tests passing
+
+### Stage 1: Data Pipeline ✅
+- Tiny dataset (8 train / 4 val events)
+- Data loading and preprocessing
+- Basic metrics implemented
+
+### Stage 2: Baseline U-Net ✅
+- 2D U-Net with MSE loss
+- CSI@74 = 0.68 on tiny dataset
+- Baseline established
+
+### Stage 3: ConvLSTM Temporal Modeling ✅
+- Encoder-decoder with temporal recurrence
+- CSI@74 = 0.73 on tiny dataset
+- Motion patterns captured
+
+### Stage 4: Perceptual Loss + Data Scaling ✅ **MAJOR BREAKTHROUGH**
+- **Problem:** Extreme event catastrophic failure (CSI@181=0.16, CSI@219=0.08)
+- **Root cause:** Data scarcity (60 events insufficient)
+- **Solution:** Scale to ALL 541 SEVIR events (432 train / 109 val)
+- **Results:**
+  - CSI@74 = 0.82 (moderate weather) ✅
+  - CSI@181 = 0.50 (extreme weather, +212% improvement!) ✅
+  - CSI@219 = 0.33 (hail, +318% improvement!) ✅
+  - LPIPS = 0.137 (sharp predictions)
+- **Key insight:** Pure MSE with sufficient data outperforms perceptual loss
+- **See:** `docs/STAGE4_BREAKTHROUGH.md` for full analysis
+
+### Stage 5: Multi-Step Forecasting (Next)
+- Extend to 6 time steps (5-30 min ahead)
+- Maintain sharpness over forecast horizon
+- Use 541-event dataset as standard
+
+---
+
 ## Experiments
 
 - The full staged plan is in `docs/EXPERIMENT_PLAN.md` and the **architecture ladder** in `docs/ARCHITECTURE_LADDER.md`.
 - Each stage has an agent-readable task file in `docs/AGENT_TASKS/` that will generate or extend notebooks in `notebooks/`.
+- **Latest:** Stage 4 breakthrough documented in `docs/STAGE4_BREAKTHROUGH.md`
 
 ## Repro & structure
 
