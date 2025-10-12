@@ -56,25 +56,32 @@ Checkpointing | ✅ Complete | Saves best + latest models
 Loss Function | ✅ Complete | MSE + Physics + Extreme weighting
 Gradient Clipping | ✅ Complete | max_norm=1.0
 
-### 4. Complete Standalone Notebook
+### 4. Modular Research Notebooks (Researcher-Friendly Workflow)
 
-**Created:** `notebooks/colab/Paper1_StormGraphTransformer_Complete.ipynb`
+**Created:** 7 step-by-step notebooks following best practices for incremental testing
 
-**Sections:**
-1. ✅ Setup & Installation (GPU check, dependencies)
-2. ✅ Data Download & Verification (AWS S3 download)
-3. ✅ Load Data (dataset creation, testing)
-4. ✅ Create Model (SGT instantiation, forward pass test)
-5. ✅ Training Setup (hyperparameters, data loaders)
-6. ✅ Training Loop (full 20 epoch training)
-7. ✅ Visualize Results (training curves)
+**Notebooks:**
+1. ✅ `01_Setup_and_Environment.ipynb` - Environment setup, GPU check, dependencies
+2. ✅ `02_Data_Verification.ipynb` - Check/download SEVIR data (AWS S3)
+3. ✅ `03_Test_DataLoader.ipynb` - Test data loading with small subset
+4. ✅ `04_Test_Model_Components.ipynb` - Test each SGT module individually
+5. ✅ `05_Test_Full_Model.ipynb` - Test integrated model end-to-end
+6. ✅ `06_Small_Scale_Training.ipynb` - Train on small dataset (10-20 events)
+7. ✅ `07_Full_Training.ipynb` - Full-scale training with metrics
 
-**Features:**
-- Single file, runs start-to-finish
-- No external dependencies
-- Self-contained with all code
-- Data download integrated
-- Ready for Colab
+**Philosophy:**
+- Test components individually before integration
+- Each notebook focuses on one specific task
+- Clear verification of correctness at each step
+- Easy to debug when issues arise
+- Makes replication straightforward for others
+
+**Benefits:**
+- Modular and testable
+- Follows researcher workflow
+- Easy to identify failures
+- Can run small tests without full dataset
+- Clear progression: setup → data → model → training
 
 ### 5. Documentation
 
@@ -358,7 +365,14 @@ stormfusion-sevir/
 │       └── sevir_multimodal.py  ✅ Dataset loader
 │
 ├── notebooks/colab/
-│   └── Paper1_StormGraphTransformer_Complete.ipynb  ✅ Standalone notebook
+│   ├── 01_Setup_and_Environment.ipynb          ✅ Environment setup
+│   ├── 02_Data_Verification.ipynb              ✅ Data check/download
+│   ├── 03_Test_DataLoader.ipynb                ✅ Data loading test
+│   ├── 04_Test_Model_Components.ipynb          ✅ Module testing
+│   ├── 05_Test_Full_Model.ipynb                ✅ Integration test
+│   ├── 06_Small_Scale_Training.ipynb           ✅ Small-scale training
+│   ├── 07_Full_Training.ipynb                  ✅ Full training
+│   └── Paper1_StormGraphTransformer_Complete.ipynb  (legacy)
 │
 ├── scripts/
 │   ├── download_all_sevir.sh    ✅ Data download script
@@ -517,10 +531,17 @@ Checkpoint not saving | Check Drive mounted, has write access
 
 ### Immediate Action Required
 
-1. Open `Paper1_StormGraphTransformer_Complete.ipynb` in Colab
-2. Set `DOWNLOAD=True` in data download cell
-3. Run all cells
-4. Monitor training progress
+**Modular Workflow (Recommended):**
+
+1. Run `01_Setup_and_Environment.ipynb` - Verify environment (5 min)
+2. Run `02_Data_Verification.ipynb` - Check/download data (30-90 min)
+3. Run `03_Test_DataLoader.ipynb` - Test data loading (5 min)
+4. Run `04_Test_Model_Components.ipynb` - Test each module (5 min)
+5. Run `05_Test_Full_Model.ipynb` - Test integration (5 min)
+6. Run `06_Small_Scale_Training.ipynb` - Verify training works (10-20 min)
+7. Run `07_Full_Training.ipynb` - Full training (several hours)
+
+**Benefits:** Each step validates correctness before proceeding to next
 
 ### Expected Outcome
 
@@ -537,6 +558,17 @@ Checkpoint not saving | Check Drive mounted, has write access
 
 ---
 
+## 📝 Update Log
+
+**Oct 12, 2025 (Evening):** Pivoted from monolithic notebook to modular workflow
+- Created 7 separate notebooks for incremental testing
+- Each notebook focuses on one specific task
+- Follows researcher best practices
+- Makes debugging and replication much easier
+- User feedback: "you need to think like a researcher that creates models those can be done and investigated individually"
+
+---
+
 *Document prepared: October 12, 2025*
-*Last updated: After complete notebook creation*
+*Last updated: After modular notebook creation*
 *Next update: After first training results*
