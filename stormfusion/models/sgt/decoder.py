@@ -98,7 +98,7 @@ class PhysicsDecoder(nn.Module):
         )  # (B, T_out, C)
 
         # Reshape back to spatial grid
-        temporal_features = temporal_features.permute(0, 2, 1).view(
+        temporal_features = temporal_features.permute(0, 2, 1).contiguous().view(
             B * self.output_steps, C, 1, 1
         )
 
