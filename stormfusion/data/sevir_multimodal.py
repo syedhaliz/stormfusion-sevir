@@ -144,25 +144,114 @@ class SEVIRMultiModalDataset(Dataset):
         return inputs, outputs
 
     def _load_modality(self, event_id, modality):
-        """Load data for one modality."""
+        """
+        Load data for one modality.
+
+        Handles 3 different SEVIR data formats:
+        - VIL: Indexed gridded data (384, 384, 49)
+        - IR069/IR107: Indexed gridded data (192, 192, 49) → upsampled to (384, 384, 49)
+        - Lightning: Event-ID-keyed sparse points (N, 5) → converted to grid (384, 384, 49)
+        """
         info = self.file_map[event_id][modality]
 
         try:
             with h5py.File(info['path'], 'r') as h5:
-                # Check if modality key exists in file
-                if modality not in h5:
-                    print(f"Warning: '{modality}' key not found in {info['path']}, using zeros")
-                    return np.zeros((384, 384, 49), dtype=np.float32)
+                if modality == 'lght':
+                    # Lightning: Use event_id as key, sparse point data
+                    if event_id not in h5:
+                        print(f"Warning: Event {event_id} not in lightning file, using zeros")
+                        return np.zeros((384, 384, 49), dtype=np.float32)
 
-                data = h5[modality][info['index']].astype(np.float32)
+                    points = h5[event_id][:]  # (N_flashes, 5) or (0, 5) if no lightning
+                    data = self._convert_lightning_to_grid(points)  # → (384, 384, 49)
+
+                elif modality in ['ir069', 'ir107']:
+                    # IR: Indexed access but 192×192, needs upsampling
+                    if modality not in h5:
+                        print(f"Warning: '{modality}' not in file, using zeros")
+                        return np.zeros((384, 384, 49), dtype=np.float32)
+
+                    data = h5[modality][info['index']].astype(np.float32)  # (192, 192, 49)
+                    data = self._upsample_ir(data)  # → (384, 384, 49)
+
+                    # IR is int16 with negative values, normalize to [0, 1]
+                    # Typical range: IR069 [-5104, -3663], IR107 [-4500, -987]
+                    data = (data - data.min()) / (data.max() - data.min() + 1e-8)
+
+                else:  # vil
+                    # VIL: Standard indexed gridded access
+                    if modality not in h5:
+                        print(f"Warning: '{modality}' not in file, using zeros")
+                        return np.zeros((384, 384, 49), dtype=np.float32)
+
+                    data = h5[modality][info['index']].astype(np.float32)  # (384, 384, 49)
+                    # VIL is uint8 [0-255], normalize to [0, 1]
+                    data = data / 255.0
+
         except (KeyError, IndexError) as e:
-            print(f"Warning: Error loading {modality} from {info['path']}: {e}, using zeros")
+            print(f"Warning: Error loading {modality} for event {event_id}: {e}, using zeros")
             return np.zeros((384, 384, 49), dtype=np.float32)
 
-        # SEVIR data is 0-255, normalize to [0, 1]
-        data = data / 255.0
-
         return data  # Shape: (384, 384, 49)
+
+    def _upsample_ir(self, data):
+        """
+        Upsample IR data from 192×192 to 384×384 using bilinear interpolation.
+
+        Args:
+            data: (192, 192, 49) array
+
+        Returns:
+            upsampled: (384, 384, 49) array
+        """
+        from scipy.ndimage import zoom
+
+        # Zoom by factor of 2 for spatial dimensions, keep time dimension same
+        upsampled = zoom(data, (2.0, 2.0, 1.0), order=1)  # order=1 for bilinear
+        return upsampled
+
+    def _convert_lightning_to_grid(self, points):
+        """
+        Convert sparse lightning point data to gridded format.
+
+        Lightning data format: (N_flashes, 5) where columns are:
+        - flash_id, x_coord, y_coord, time_index, energy
+
+        Args:
+            points: (N_flashes, 5) array of sparse lightning points
+                   Can be (0, 5) if no lightning occurred
+
+        Returns:
+            grid: (384, 384, 49) array with lightning density
+        """
+        grid = np.zeros((384, 384, 49), dtype=np.float32)
+
+        if len(points) == 0:
+            # No lightning flashes
+            return grid
+
+        # Extract coordinates
+        # Column indices: 0=flash_id, 1=x, 2=y, 3=time, 4=energy
+        x_coords = points[:, 1].astype(int)  # Spatial x
+        y_coords = points[:, 2].astype(int)  # Spatial y
+        t_coords = points[:, 3].astype(int)  # Time frame
+        energies = points[:, 4]              # Flash energy
+
+        # Clip coordinates to valid range
+        x_coords = np.clip(x_coords, 0, 383)
+        y_coords = np.clip(y_coords, 0, 383)
+        t_coords = np.clip(t_coords, 0, 48)
+
+        # Accumulate lightning energy at each grid cell
+        for i in range(len(points)):
+            grid[y_coords[i], x_coords[i], t_coords[i]] += energies[i]
+
+        # Normalize by max energy to get density [0, 1]
+        max_energy = grid.max()
+        if max_energy > 0:
+            grid = grid / max_energy
+
+        return grid
 
     def _normalize(self, data, modality):
         """Normalize using pre-computed statistics."""

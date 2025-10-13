@@ -96,6 +96,105 @@ Gradient Clipping | ✅ Complete | max_norm=1.0
 
 ---
 
+## 🔬 Critical Data Structure Discovery (Oct 12 Update)
+
+### The Problem
+
+After implementing the complete architecture, notebooks 02 and 03 consistently failed with data loading errors:
+- "File not found" warnings
+- KeyError: 'Unable to synchronously open object (object 'lght' doesn't exist)'
+- Dataset returning all zeros for lightning modality
+- Trial-and-error fixes (pathlib→os.path, error handling, Drive mounting) didn't solve root cause
+
+### The Diagnostic Approach
+
+Instead of more bandaid fixes, created `scripts/inspect_sevir_files.py` to directly inspect H5 file structure. This revealed **3 fundamentally different data formats** in SEVIR that the loader wasn't designed to handle.
+
+### Critical Findings
+
+**1. VIL (Target Modality) - Standard Structure ✅**
+```
+Keys: ['id', 'vil']
+'vil': (2256, 384, 384, 49) - uint8, range [0-255]
+Access: h5['vil'][file_index]
+Status: Works correctly
+```
+
+**2. IR069 & IR107 (Infrared) - Resolution Mismatch ⚠️**
+```
+Keys: ['id', 'ir069'] and ['id', 'ir107']
+'ir069': (2016, 192, 192, 49) - int16, range [-5104, -3663]
+'ir107': (2016, 192, 192, 49) - int16, range [-4500, -987]
+Access: h5[modality][file_index]
+Problem: 192×192, not 384×384! Needs upsampling
+```
+
+**3. Lightning (GLM) - Completely Different Structure ❌**
+```
+Keys: ['R19010510527286', 'R19010510527301', ..., 'id']
+Each event uses event_id as key, not indexed array!
+'R19010512297159': (1172, 5) - sparse point data [flash_id, x, y, time, energy]
+'R19010510527663': (0, 5) - no lightning occurred
+Access: h5[event_id][:] NOT h5['lght'][index]
+Problem: Point data, not gridded! Need sparse-to-grid conversion
+```
+
+### Why Previous Approach Failed
+
+**The loader assumed:**
+1. ✅ All modalities use `h5[modality][file_index]` - **FALSE for lightning**
+2. ✅ All data is 384×384×49 gridded arrays - **FALSE for IR (192×192) and lightning (sparse points)**
+3. ✅ `file_index` from catalog applies to all modalities - **FALSE for lightning (uses event_id keys)**
+
+**Reality:**
+- **VIL:** Standard indexed gridded data ✅
+- **IR:** Indexed gridded data but **wrong resolution** (192×192 → needs upsampling to 384×384)
+- **Lightning:** **Event-ID-keyed sparse point data** → needs conversion to 384×384 grid
+
+### Impact on Implementation
+
+**Current loader (`stormfusion/data/sevir_multimodal.py`):**
+```python
+def _load_modality(self, event_id, modality):
+    with h5py.File(info['path'], 'r') as h5:
+        data = h5[modality][info['index']]  # ❌ Fails for lightning
+        # ❌ Assumes all data is 384×384
+        # ❌ No upsampling for IR
+        # ❌ No sparse-to-grid conversion for lightning
+```
+
+**Required fix:**
+```python
+def _load_modality(self, event_id, modality):
+    with h5py.File(info['path'], 'r') as h5:
+        if modality == 'lght':
+            # Use event_id as key, convert sparse points to grid
+            points = h5[event_id][:]  # (N_flashes, 5)
+            data = self._convert_lightning_to_grid(points)  # → (384, 384, 49)
+        elif modality in ['ir069', 'ir107']:
+            # Load 192×192, upsample to 384×384
+            data = h5[modality][info['index']]  # (192, 192, 49)
+            data = self._upsample_ir(data)  # → (384, 384, 49)
+        else:  # vil
+            data = h5[modality][info['index']]  # (384, 384, 49)
+    return data
+```
+
+### Additional Discoveries
+
+**Data Availability:**
+- Only 2019 data available in AWS S3 public bucket (not 2017-2019)
+- 26 files total: 5 VIL + 5 IR069 + 5 IR107 + 11 Lightning
+- Catalog references all years (2017-2019), need to filter to 2019 only
+- Many lightning files have events with (0, 5) shape = no lightning occurred
+
+**Google Colab Compatibility:**
+- Google Drive FUSE requires `os.path`, not `pathlib.Path`
+- Each notebook needs Drive mount + git clone (separate sessions)
+- Fixed in notebooks 02, 03, 05, 06, 07
+
+---
+
 ## 🎯 Current Status
 
 ### What Works
@@ -103,29 +202,35 @@ Gradient Clipping | ✅ Complete | max_norm=1.0
 ✅ **Architecture:** All 7 modules implemented and tested
 ✅ **Forward Pass:** Successfully processes (1, 12, 384, 384) → (1, 6, 384, 384)
 ✅ **Loss Computation:** MSE + Physics + Extreme losses computed correctly
-✅ **Data Loading:** Multimodal dataset loads all 4 modalities
 ✅ **Training Pipeline:** Full training loop ready
-✅ **Notebook:** Complete standalone notebook ready to run
+✅ **Notebooks:** Drive mounting and git cloning fixed
+✅ **Data Diagnostics:** Complete understanding of SEVIR file formats
 
 ### Known Issues (Fixed)
 
 ❌ ~~Tensor contiguity error in decoder~~ → ✅ Fixed with `.contiguous()`
 ❌ ~~PyTorch 2.8 install issues~~ → ✅ Fixed with standard pip install
-❌ ~~Missing modality warnings~~ → ✅ Explained (need full data download)
+❌ ~~Drive not mounted in notebooks~~ → ✅ Added `drive.mount()` to all notebooks
+❌ ~~Module import errors~~ → ✅ Added git clone to all notebooks
+❌ ~~pathlib vs os.path issues~~ → ✅ Changed to `os.path` for Drive compatibility
+❌ ~~Dataset signature confusion~~ → ✅ Created `build_index_from_ids()` helper
+❌ ~~Catalog year mismatch~~ → ✅ Filter to 2019 events only
 
 ### Current Blocker
 
-⚠️ **Data Download Required**
+⚠️ **Data Loader Rewrite Required**
 
-**Issue:** Only have 1-11 files per modality, need ~174 files each
+**Issue:** Dataset loader assumes uniform data structure, but SEVIR has 3 different formats
 
-**Impact:** Model uses zeros for missing modalities (degrades performance)
+**Components needed:**
+1. Lightning sparse-to-grid conversion
+2. IR bilinear upsampling (192×192 → 384×384)
+3. Event-ID-based access for lightning files
+4. Handle missing lightning events (0 flashes)
 
-**Solution:** Run data download cell in notebook (set `DOWNLOAD=True`)
+**Estimated time:** 15-20 minutes to implement properly
 
-**Time:** 30-90 minutes for ~50 GB
-
-**After download:** Ready to train immediately
+**After fix:** Can test notebooks 03-07 with real data
 
 ---
 
@@ -567,8 +672,20 @@ Checkpoint not saving | Check Drive mounted, has write access
 - Makes debugging and replication much easier
 - User feedback: "you need to think like a researcher that creates models those can be done and investigated individually"
 
+**Oct 12, 2025 (Late Evening):** Critical SEVIR data structure discovery
+- Fixed notebook compatibility issues (Drive mounting, git cloning, pathlib→os.path)
+- Data loading still failed - took diagnostic approach instead of trial-and-error
+- Created `scripts/inspect_sevir_files.py` to inspect actual H5 file structure
+- **Key discovery:** SEVIR has 3 fundamentally different data formats:
+  - VIL: Standard indexed gridded (384×384×49) ✅
+  - IR: Indexed gridded but 192×192, needs upsampling ⚠️
+  - Lightning: Event-ID-keyed sparse points, needs grid conversion ❌
+- Explains all data loading failures - loader assumes uniform structure
+- Next: Rewrite `_load_modality()` to handle all 3 formats properly
+- User feedback: "this try this fix, that fix and fix approach is very un scientific and tedious" → led to proper diagnostic approach
+
 ---
 
 *Document prepared: October 12, 2025*
-*Last updated: After modular notebook creation*
-*Next update: After first training results*
+*Last updated: After SEVIR data structure discovery*
+*Next update: After data loader fix and successful testing*
