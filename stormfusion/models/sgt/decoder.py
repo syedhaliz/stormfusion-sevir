@@ -61,7 +61,7 @@ class PhysicsDecoder(nn.Module):
 
             # Final prediction
             nn.Conv2d(32, 1, kernel_size=3, padding=1),
-            nn.ReLU()  # VIL is non-negative
+            nn.Sigmoid()  # Output [0, 1] to match VIL range
         )
 
         # Physics parameters (learnable)
