@@ -147,8 +147,17 @@ class SEVIRMultiModalDataset(Dataset):
         """Load data for one modality."""
         info = self.file_map[event_id][modality]
 
-        with h5py.File(info['path'], 'r') as h5:
-            data = h5[modality][info['index']].astype(np.float32)
+        try:
+            with h5py.File(info['path'], 'r') as h5:
+                # Check if modality key exists in file
+                if modality not in h5:
+                    print(f"Warning: '{modality}' key not found in {info['path']}, using zeros")
+                    return np.zeros((384, 384, 49), dtype=np.float32)
+
+                data = h5[modality][info['index']].astype(np.float32)
+        except (KeyError, IndexError) as e:
+            print(f"Warning: Error loading {modality} from {info['path']}: {e}, using zeros")
+            return np.zeros((384, 384, 49), dtype=np.float32)
 
         # SEVIR data is 0-255, normalize to [0, 1]
         data = data / 255.0
