@@ -153,10 +153,12 @@ class PhysicsDecoder(nn.Module):
             v = self.advection_v * (t + 1)
 
             # Create affine transformation matrix
-            theta = torch.tensor([
-                [1, 0, u / (W / 2)],
-                [0, 1, v / (H / 2)]
-            ], dtype=torch.float32, device=device).unsqueeze(0).expand(B, -1, -1)
+            # Build directly to preserve gradients
+            theta = torch.zeros(B, 2, 3, dtype=torch.float32, device=device)
+            theta[:, 0, 0] = 1.0
+            theta[:, 1, 1] = 1.0
+            theta[:, 0, 2] = u / (W / 2)
+            theta[:, 1, 2] = v / (H / 2)
 
             grid = F.affine_grid(theta, pred.unsqueeze(1).size(), align_corners=False)
             advected = F.grid_sample(
