@@ -51,41 +51,54 @@ class StormCellDetector(nn.Module):
         Detect storm cells and extract node features.
 
         Args:
-            features: Encoded features (B, C, H, W)
-            vil_input: VIL input for peak detection (B, T, H, W) - use last frame
+            features: Encoded features (B, C, H_feat, W_feat) - downsampled from input
+            vil_input: VIL input for peak detection (B, T, H_vil, W_vil) - original resolution
 
         Returns:
             node_features: List of (N_i, C) tensors, one per batch
-            node_positions: List of (N_i, 2) tensors (y, x coordinates)
+            node_positions: List of (N_i, 2) tensors (y, x coordinates in feature space)
             batch_idx: Tensor mapping nodes to batch indices
         """
-        B, C, H, W = features.shape
+        B, C, H_feat, W_feat = features.shape
         device = features.device
 
         # Use last VIL frame for peak detection
-        vil_last = vil_input[:, -1, :, :]  # (B, H, W)
+        vil_last = vil_input[:, -1, :, :]  # (B, H_vil, W_vil)
+        H_vil, W_vil = vil_last.shape[1], vil_last.shape[2]
+
+        # Calculate downsampling factor
+        downsample_h = H_vil / H_feat
+        downsample_w = W_vil / W_feat
 
         all_node_features = []
         all_node_positions = []
         all_batch_idx = []
 
         for b in range(B):
-            # Detect peaks in this sample
+            # Detect peaks in VIL (original resolution)
             peaks = self._detect_peaks(vil_last[b].cpu().numpy())
 
             if len(peaks) == 0:
                 # No storms detected - add dummy node at center
-                peaks = [(H // 2, W // 2)]
+                peaks = [(H_vil // 2, W_vil // 2)]
 
             # Extract features at peak locations
             node_feats = []
             node_pos = []
 
-            for y, x in peaks[:self.max_storms]:
-                # Extract feature vector at this location
-                feat = features[b, :, y, x]  # (C,)
+            for y_vil, x_vil in peaks[:self.max_storms]:
+                # Scale coordinates from VIL space to feature space
+                y_feat = int(y_vil / downsample_h)
+                x_feat = int(x_vil / downsample_w)
+
+                # Clip to valid range
+                y_feat = min(y_feat, H_feat - 1)
+                x_feat = min(x_feat, W_feat - 1)
+
+                # Extract feature vector at scaled location
+                feat = features[b, :, y_feat, x_feat]  # (C,)
                 node_feats.append(feat)
-                node_pos.append([y, x])
+                node_pos.append([y_feat, x_feat])  # Store in feature space coordinates
 
             # Stack
             node_feats = torch.stack(node_feats)  # (N, C)
