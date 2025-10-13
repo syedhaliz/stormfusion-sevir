@@ -684,8 +684,21 @@ Checkpoint not saving | Check Drive mounted, has write access
 - Next: Rewrite `_load_modality()` to handle all 3 formats properly
 - User feedback: "this try this fix, that fix and fix approach is very un scientific and tedious" → led to proper diagnostic approach
 
+**Oct 12, 2025 (Night):** Data loader fix complete and tested ✅
+- Rewrote `_load_modality()` to handle all 3 SEVIR data formats
+- Added `_upsample_ir()`: bilinear interpolation 192×192 → 384×384
+- Added `_convert_lightning_to_grid()`: sparse points → 384×384 grid
+- Fixed notebook 03: format errors, outputs structure, module reload
+- **SUCCESS:** Notebook 03 now loads all modalities correctly!
+- Added complete setup logic to notebooks 04-07:
+  - Drive mount (data access)
+  - Git clone/pull (latest code)
+  - Module reload (force refresh after git pull)
+- All notebooks now ensure they use latest code in each Colab session
+- Ready to test model components (notebook 04) and training (notebooks 06-07)
+
 ---
 
 *Document prepared: October 12, 2025*
-*Last updated: After SEVIR data structure discovery*
-*Next update: After data loader fix and successful testing*
+*Last updated: After successful data loader testing and notebook setup completion*
+*Next update: After model testing and training results*
