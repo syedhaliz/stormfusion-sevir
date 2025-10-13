@@ -178,8 +178,8 @@ class PhysicsDecoder(nn.Module):
             'advection_u': self.advection_u,
             'advection_v': self.advection_v,
             'dissipation': self.dissipation,
-            'original_mass': predictions.sum(dim=(2, 3)),
-            'constrained_mass': constrained.sum(dim=(2, 3))
+            'original_mass': predictions.mean(dim=(2, 3)),    # Use mean for normalized values
+            'constrained_mass': constrained.mean(dim=(2, 3))  # Use mean for normalized values
         }
 
         return constrained, physics_info
@@ -200,8 +200,10 @@ def compute_physics_loss(predictions, targets, physics_info, lambda_conservation
         loss_dict: Dict with individual loss components
     """
     # 1. Conservation loss: total mass should be approximately conserved
-    pred_mass = predictions.sum(dim=(2, 3))  # (B, T)
-    target_mass = targets.sum(dim=(2, 3))  # (B, T)
+    # Use MEAN instead of SUM to normalize by spatial size (384×384 = 147,456 pixels)
+    # This keeps values in [0, 1] range, preventing massive loss values
+    pred_mass = predictions.mean(dim=(2, 3))  # (B, T) - average intensity per frame
+    target_mass = targets.mean(dim=(2, 3))    # (B, T)
 
     # Allow some dissipation, but penalize large changes
     conservation_loss = F.mse_loss(pred_mass, target_mass)
