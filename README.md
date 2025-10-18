@@ -1,5 +1,7 @@
 # StormFusion-SEVIR
 
+> **⚡ RESUMING WORK? → [START HERE](START_HERE.md)** ← Quick resume guide (last updated Oct 17, 2025)
+
 A staged, **simple→complex** research framework for precipitation nowcasting and synthetic radar generation on **SEVIR**,
 with an engineered path to **new architectures** and **new modalities**.
 
